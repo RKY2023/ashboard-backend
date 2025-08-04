@@ -2,13 +2,13 @@ from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from django.http import HttpResponse
-from country.models import Country
+from country.models import Country, OrdeyByNameDscCountry
 # Create your views here.
 
 @api_view(['GET'])
 def get_country(request):
     if request.method == 'GET':
-        countries = Country.objects.all()
+        countries = OrdeyByNameDscCountry.objects.all()
         data = list(countries.values())
         return Response({"message": "success", "data": data})
     elif request.method == 'POST':

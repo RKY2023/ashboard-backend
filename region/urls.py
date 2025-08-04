@@ -9,7 +9,8 @@ from region.views import region_list_create, test
 
 urlpatterns = [
     # path('', include(router.urls)),
-    path('', region_list_create, name='region-list-create'),
+    path('', views.RegionView.as_view(), name='region-list'),
+    # path('', region_list_create, name='region-list-create'),
     path('test/', test, name='test'),
     # path('/test', views.test),
     # path('region/create', views.region_list_create),
