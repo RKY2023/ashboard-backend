@@ -1,12 +1,13 @@
 from django.shortcuts import render
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
+from django.views import View
 from region.models import Region
 
 # Create your views here.
-class RegionView:
+class RegionView(View):
     def get(self, request):
         regions = Region.objects.all()
-        return HttpResponse({'message': "success", 'data': list(regions.values())})
+        return JsonResponse({'messagde': "success", 'data': list(regions.values())})
 
     def post(self, request):
         region_name = request.POST.get('region_name')
