@@ -42,6 +42,9 @@ INSTALLED_APPS = [
     'region',
     'state',
     'country',
+    'pizza',
+    'topping',
+    'commoninfo',
 ]
 
 MIDDLEWARE = [

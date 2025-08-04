@@ -10,10 +10,10 @@ class StateView(View):
     def get(self, request):
         states = State.objects.all()
         data = list(states.values())
-        return JsonResponse({"message": "success", "data": data})
+        return JsonResponse({"message": "success1", "data": data})
 @api_view(['GET']) 
 def get(request):
     states = State.objects.all()
     data = list(states.values())
-    return Response({"message": "success", "data": data}    )
+    return Response({"message": "success2", "data": data}    )
     
