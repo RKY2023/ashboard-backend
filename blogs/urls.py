@@ -19,7 +19,7 @@ from django.urls import path, include
 from blogs.views import home
 
 urlpatterns = [
-    # path('', home),  # Include the region app URLs
+    path('', home),  # Include the region app URLs
     path('api/', include('api.urls')),  # Include the API app URLs
     path('admin/', admin.site.urls),
     path('region/', include('region.urls')),
@@ -27,4 +27,5 @@ urlpatterns = [
     path('country/', include('country.urls')),
     path('pizza/', include('pizza.urls')),
     path('topping/', include('topping.urls')),
+    path('userprofile/', include('userprofile.urls')),
 ]
