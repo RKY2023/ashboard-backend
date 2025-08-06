@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-u1nf)n481z^1dd%pg5x%20=1bbl)h5&vv!n1wkx*3vg#ij^ve1'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG') or False
 
 ALLOWED_HOSTS = ['*']
 
@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     'pizza',
     'topping',
     'commoninfo',
+    'dairyentry',
+    'userprofile',
 ]
 
 MIDDLEWARE = [
