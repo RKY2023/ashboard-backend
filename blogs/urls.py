@@ -17,6 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from blogs.views import home
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 urlpatterns = [
     path('', home),  # Include the region app URLs
@@ -28,4 +29,11 @@ urlpatterns = [
     path('pizza/', include('pizza.urls')),
     path('topping/', include('topping.urls')),
     path('userprofile/', include('userprofile.urls')),
+    path('product/', include('product.urls')),
+    path('order/', include('order.urls')),
+    path('vendor/', include('vendor.urls')),
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    # Optional UI:
+    path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
