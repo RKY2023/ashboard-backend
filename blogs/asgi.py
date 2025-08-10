@@ -7,10 +7,16 @@ For more information on this file, see
 https://docs.djangoproject.com/en/5.2/howto/deployment/asgi/
 """
 
-import os
+import os, sys, traceback
 
 from django.core.asgi import get_asgi_application
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'blogs.settings')
 
-application = get_asgi_application()
+try:
+    application = get_asgi_application()
+except Exception:
+    traceback.print_exc()
+    sys.stdout.flush()
+    raise
+
