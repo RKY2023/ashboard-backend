@@ -108,14 +108,13 @@ WSGI_APPLICATION = 'blogs.wsgi.application'
 import os
 import dj_database_url
 
-if "VERCEL" in os.environ:
+if os.getenv("VERCEL"):
+    db_url = os.getenv("DATABASE_URL", "")
     DATABASES = {
-        "default": dj_database_url.config(
-            default=os.environ.get("DATABASE_URL"),
-            conn_max_age=600,
-            ssl_require=True,
-        )
+        "default": dj_database_url.parse(db_url, conn_max_age=600, ssl_require=True)
     }
+    if not DATABASES["default"].get("ENGINE"):
+        raise Exception(f"Missing ENGINE in DATABASES config. DATABASE_URL='{db_url}' might be invalid or missing.")
 else:
     DATABASES = {
         "default": {
@@ -123,7 +122,6 @@ else:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
-
 
 
 # Password validation
