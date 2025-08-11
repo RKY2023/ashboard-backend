@@ -1,13 +1,16 @@
 from rest_framework import serializers
 from .models import OrderItem, Order
+from product.views import ProductSerializer
 
 class OrderItemSerializer(serializers.ModelSerializer):
     # amount = serializers.DecimalField(read_only=True, max_digits=10, decimal_places=2)
+    product = ProductSerializer(read_only=True)
 
     class Meta:
         model = OrderItem
         # fields = ['product', 'quantity', 'amount']
-        fields = '__all__'
+        # fields = '__all__'
+        exclude = ['order']
         # read_only_fields = ['amount']
 
 
@@ -16,7 +19,7 @@ class OrderSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Order
-        fields = ['id', 'order_date', 'vendor', 'status', 'items']
+        fields = ['id', 'order_date', 'vendor', 'status', 'items', 'total_amt']
     
     def create(self, validated_data):
         items_data = validated_data.pop('items', [])

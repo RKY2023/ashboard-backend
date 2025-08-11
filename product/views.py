@@ -2,7 +2,7 @@ from django.shortcuts import get_object_or_404
 from product.models import Product
 from django.http import JsonResponse, HttpResponse
 from django.views import View
-from rest_framework import serializers, status, generics
+from rest_framework import serializers, status, generics, viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt
@@ -12,19 +12,33 @@ from django_filters.rest_framework import DjangoFilterBackend
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
-        fields = '__all__'
+        fields = ['product_name', 'product_code', 'selling_price']
+        # fields = '__all__'
 
-class ProductListCreateAPIView(generics.ListCreateAPIView,
-                     generics.RetrieveUpdateDestroyAPIView):
+class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
+    lookup_field = 'product_code'
+    # pagination_class = None
     filter_backends = [DjangoFilterBackend]
     filterset_fields = {
+        'id': ['exact', 'lt', 'gt'],
         'product_name': ['exact', 'icontains'],
         'product_code': ['exact', 'icontains'],
         'selling_price': ['exact', 'lt', 'gt'],
         'purchase_price': ['exact', 'lt', 'gt'],
     }
+# class ProductListCreateAPIView(generics.ListCreateAPIView,
+#                      generics.RetrieveUpdateDestroyAPIView):
+#     queryset = Product.objects.all()
+#     serializer_class = ProductSerializer
+#     filter_backends = [DjangoFilterBackend]
+#     filterset_fields = {
+#         'product_name': ['exact', 'icontains'],
+#         'product_code': ['exact', 'icontains'],
+#         'selling_price': ['exact', 'lt', 'gt'],
+#         'purchase_price': ['exact', 'lt', 'gt'],
+#     }
 # class ProductAPIView(APIView):
 #     queryset = Product.objects.all()
 #     serializer_class = ProductSerializer
