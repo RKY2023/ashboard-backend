@@ -4,6 +4,8 @@ from rest_framework import generics, status
 from .models import OrderItem, Order
 from .serializers import OrderItemSerializer, OrderSerializer
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Prefetch
+from rest_framework.permissions import IsAuthenticated
 
 # Create your views here.
 
@@ -26,7 +28,14 @@ class OrderItemRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIVie
 
 # -------------------- ORDERS --------------------
 class OrderListCreateAPIView(generics.ListCreateAPIView):
-    queryset = Order.objects.all()
+    # queryset = Order.objects.all()
+    # queryset = Order.objects.prefetch_related('items').all()
+    
+    # queryset = Order.objects.prefetch_related(
+    #     Prefetch('items', queryset=OrderItem.objects.select_related('product'))
+    # ).all()
+    queryset = Order.objects.prefetch_related('items__product').all()
+    
     serializer_class = OrderSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = {
@@ -38,6 +47,22 @@ class OrderListCreateAPIView(generics.ListCreateAPIView):
 class OrderRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
+
+class UserOrderListCreateAPIView(generics.ListCreateAPIView):
+    queryset = Order.objects.prefetch_related('items__product').all()
+    permission_classes = [IsAuthenticated]
+    serializer_class = OrderSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = {
+        'order_date': ['exact', 'lte', 'gte'],
+        'status': ['exact', 'icontains'],
+        'vendor': ['exact'],
+    }
+    def get_queryset(self):
+        user = self.request.user
+        qs = super().get_queryset()
+    
+        return qs.filter(vendor__user=user)
 
 
 

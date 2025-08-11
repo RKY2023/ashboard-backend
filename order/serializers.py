@@ -4,7 +4,16 @@ from product.views import ProductSerializer
 
 class OrderItemSerializer(serializers.ModelSerializer):
     # amount = serializers.DecimalField(read_only=True, max_digits=10, decimal_places=2)
-    product = ProductSerializer(read_only=True)
+    # product = ProductSerializer(read_only=True)
+    product_name = serializers.CharField(source='product.product_name', read_only=True)
+    product_code = serializers.CharField(source='product.product_code', read_only=True)
+    selling_price = serializers.DecimalField(
+        source='product.selling_price',
+        read_only=True,
+        decimal_places=2,
+        max_digits=10
+    )
+    
 
     class Meta:
         model = OrderItem
@@ -16,6 +25,12 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
+    total_amt = serializers.DecimalField(
+        # source='total_amt',
+        read_only=True,
+        decimal_places=2,
+        max_digits=10
+    )
     
     class Meta:
         model = Order

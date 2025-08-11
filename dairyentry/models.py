@@ -1,5 +1,6 @@
 from django.db import models
-from django.contrib.auth.models import User
+# from django.contrib.auth.models import User
+from django.conf import settings
 
 class DiaryEntry(models.Model):
     VISIBILITY_CHOICES = [
@@ -20,7 +21,7 @@ class DiaryEntry(models.Model):
         ('other', 'Other'),
     ]
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     title = models.CharField(max_length=150, blank=True)
     content = models.TextField()
     mood = models.CharField(max_length=20, choices=MOOD_CHOICES, blank=True, null=True)
@@ -55,7 +56,10 @@ class Tag(models.Model):
 
 class DiaryEntryShare(models.Model):
     diary_entry = models.ForeignKey(DiaryEntry, on_delete=models.CASCADE)
-    shared_with = models.ForeignKey(User, on_delete=models.CASCADE, related_name='shared_diaries')
+    # shared_with = models.ForeignKey(User, on_delete=models.CASCADE, related_name='shared_diaries')
+    shared_with = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='shared_diaries')
+    
+    
     permission = models.CharField(max_length=10, choices=[('read', 'Read'), ('comment', 'Comment')], default='read')
     shared_at = models.DateTimeField(auto_now_add=True)
 
