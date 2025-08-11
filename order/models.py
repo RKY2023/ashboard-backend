@@ -3,10 +3,6 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-
-# -------------------
-# Custom QuerySet
-# -------------------
 class OrderQuerySet(models.QuerySet):
     def approved(self):
         return self.filter(status='Approved')
@@ -25,9 +21,6 @@ class OrderQuerySet(models.QuerySet):
         return self.none()
 
 
-# -------------------
-# Custom Manager
-# -------------------
 class OrderManager(models.Manager):
     def get_queryset(self):
         return OrderQuerySet(self.model, using=self._db)
@@ -45,9 +38,6 @@ class OrderManager(models.Manager):
         return self.get_queryset().lockable_by(user)
 
 
-# -------------------
-# Models
-# -------------------
 class Order(models.Model):
     ORDER_STATUS_CHOICES = [
         ('Pending', 'Pending'),
