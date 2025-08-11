@@ -53,9 +53,9 @@ class Order(models.Model):
     def __str__(self):
         return f"Order {self.id} - {self.status} for {self.vendor}"
 
-    @property
-    def total_qty(self):
-        return sum(item.quantity for item in self.items.all())
+    # @property
+    # def total_qty(self):
+    #     return sum(item.quantity for item in self.items.all())
 
     @property
     def total_amt(self):
