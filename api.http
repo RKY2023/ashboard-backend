@@ -1,0 +1,15 @@
+GET http://127.0.0.1:8080/product/ HTTP/1.1
+
+###
+
+
+POST http://127.0.0.1:8080/product/ HTTP/1.1
+Content-Type: application/json
+{
+    "name": "New Product",
+    "description": "This is a new product.",
+    "price": "19.99",
+    "category": "Electronics",
+    "product_code": "NP12345",
+    "vendor": 1
+}
