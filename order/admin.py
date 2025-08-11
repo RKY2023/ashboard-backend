@@ -8,7 +8,11 @@ class OrderItemAdmin(admin.ModelAdmin):
 admin.site.register(OrderItem, OrderItemAdmin)
 
 class OrderAdmin(admin.ModelAdmin):
-    readonly_fields = ['total_amt', 'total_qty']
+    # readonly_fields = ['total_amt', 'total_qty']
+    # fields = ['id', 'vendor', 'order_date', 'status', 'items', 'total_amt']
+    list_display = ('id', 'vendor', 'status', 'order_date', 'total_amt')
+    
+    # def total_amt(self, obj):
     
     class Meta:
         model = Order
