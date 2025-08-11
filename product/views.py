@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.db.models import Max
 from product.models import Product
 from django.http import JsonResponse, HttpResponse
 from django.views import View
@@ -7,6 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt
 from django_filters.rest_framework import DjangoFilterBackend
+# import pdb
 
 # Create your views here.
 class ProductSerializer(serializers.ModelSerializer):
@@ -15,11 +17,21 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = ['product_name', 'product_code', 'selling_price']
         # fields = '__all__'
 
+class ProductInfoSerializer(serializers.ModelSerializer):
+    products = ProductSerializer(read_only=True, many=True)
+    count = serializers.IntegerField()
+    max_price = serializers.FloatField()
+    
+    class Meta:
+        model = Product
+        fields = ['products', 'count', 'max_price']
+    
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     lookup_field = 'product_code'
     # pagination_class = None
+    # pdb.set_trace()
     filter_backends = [DjangoFilterBackend]
     filterset_fields = {
         'id': ['exact', 'lt', 'gt'],
@@ -28,6 +40,15 @@ class ProductViewSet(viewsets.ModelViewSet):
         'selling_price': ['exact', 'lt', 'gt'],
         'purchase_price': ['exact', 'lt', 'gt'],
     }
+class ProductInfoAPIView(APIView):
+    def get(self, request):
+        products = Product.objects.all()
+        serializer = ProductInfoSerializer({
+            'products' : products,
+            'count': len(products),
+            'max_price': products.aggregate(Max('selling_price'))['selling_price__max']
+        })
+        return Response({'message': 'success', 'products': serializer.data}, status=status.HTTP_200_OK)
 # class ProductListCreateAPIView(generics.ListCreateAPIView,
 #                      generics.RetrieveUpdateDestroyAPIView):
 #     queryset = Product.objects.all()

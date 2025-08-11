@@ -18,7 +18,8 @@ from django.contrib import admin
 from django.urls import path, include
 from blogs.views import home
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
-
+from product.views import ProductInfoAPIView
+from order.views import UserOrderListCreateAPIView
 urlpatterns = [
     path('', home),  # Include the region app URLs
     path('api/', include('api.urls')),  # Include the API app URLs
@@ -30,10 +31,13 @@ urlpatterns = [
     path('topping/', include('topping.urls')),
     path('userprofile/', include('userprofile.urls')),
     path('product/', include('product.urls')),
+    path('productInfo/', ProductInfoAPIView.as_view(), name='product_info'),
     path('order/', include('order.urls')),
+    path('user-order/', UserOrderListCreateAPIView.as_view(), name='user_order_list_create'),
     path('vendor/', include('vendor.urls')),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     # Optional UI:
     path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    path('silk/', include('silk.urls', namespace='silk')),
 ]
