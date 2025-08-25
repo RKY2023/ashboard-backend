@@ -20,9 +20,24 @@ from blogs.views import home
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from product.views import ProductInfoAPIView
 from order.views import UserOrderListCreateAPIView
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+    TokenVerifyView,
+)
+
 urlpatterns = [
     path('', home),  # Include the region app URLs
     path('api/', include('api.urls')),  # Include the API app URLs
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    path('silk/', include('silk.urls', namespace='silk')),
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
+
+    
     path('admin/', admin.site.urls),
     path('region/', include('region.urls')),
     path('sate/', include('state.urls')),
@@ -33,11 +48,9 @@ urlpatterns = [
     path('product/', include('product.urls')),
     path('productInfo/', ProductInfoAPIView.as_view(), name='product_info'),
     path('order/', include('order.urls')),
-    path('user-order/', UserOrderListCreateAPIView.as_view(), name='user_order_list_create'),
+    path('user-order/', UserOrderListCreateAPIView.as_view(), name='user-order'),
     path('vendor/', include('vendor.urls')),
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('user/', include('user.urls')),
     # Optional UI:
-    path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
-    path('silk/', include('silk.urls', namespace='silk')),
+    
 ]
