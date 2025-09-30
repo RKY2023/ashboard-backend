@@ -1,0 +1,108 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# ---- Django ----
+*.log
+*.pot
+*.pyc
+*.mo
+db.sqlite3
+media/
+staticfiles/
+
+# ---- Environments ----
+.env
+.venv/
+venv/
+env/
+ENV/
+
+# ---- IDEs / Editors ----
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ---- OS Files ----
+.DS_Store
+Thumbs.db
+
+# ---- Coverage / Testing ----
+.coverage
+htmlcov/
+.tox/
+.pytest_cache/
+nosetests.xml
+coverage.xml
+
+# ---- Migrations ----
+# (optional: ignore if you don’t want migrations tracked per developer)
+# */migrations/*.py
+# !*/migrations/__init__.py
+
+# ---- Pip ----
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ---- MyPy / Pyre / Pytype ----
+.mypy_cache/
+.pyre/
+.pytype/
+
+# ---- Claude / Anthropic ----
+.claude/
+
+# ---- AI Model Code Platforms (AI MCP) ----
+
+# Model Weights / Formats
+*.ckpt
+*.pth
+*.pt
+*.h5
+*.pb
+*.tflite
+*.onnx
+*.joblib
+*.pkl
+*.npz
+
+# Model logs, outputs, experiments
+runs/
+logs/
+output/
+checkpoints/
+experiments/
+*.log
+
+# MLflow
+mlruns/
+
+# Weights & Biases
+wandb/
+
+# Hugging Face / Transformers / Datasets
+*.cache/
+transformers_cache/
+datasets_cache/
+hf_cache/
+~/.cache/huggingface/
+
+# LangChain / Vector DBs / Agents
+*.faiss
+*.chroma/
+index_store/
+*.sqlite3
+
+# Jupyter / Colab
+.ipynb_checkpoints/
+
+# FastAI / Lightning / DVC
+__dvc/
+.dvc/
+.lightning/
+lightning_logs/
+trainer_logs/
