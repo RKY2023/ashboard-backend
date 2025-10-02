@@ -11,9 +11,13 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -23,7 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG') or False
+DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
 ALLOWED_HOSTS = ['*']
 
@@ -115,6 +119,7 @@ WSGI_APPLICATION = 'blogs.wsgi.application'
 # Database
 import os
 import dj_database_url
+# from dotenv import load_dotenv; load_dotenv('.env.vercel'); import os; print('VERCEL:', os.getenv('VERCEL'));
 
 if os.getenv("VERCEL"):
     db_url = os.getenv("DATABASE_URL", "")
@@ -130,7 +135,7 @@ else:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
-
+# print("APP env:", os.getenv("VERCEL"), DATABASES)
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
