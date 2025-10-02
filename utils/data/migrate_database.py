@@ -76,27 +76,38 @@ def get_models_to_migrate():
     model_deps = {}
 
     for model in models:
-        deps = []
+        deps = set()
         for field in model._meta.get_fields():
-            if field.is_relation and field.related_model and field.related_model in models:
-                deps.append(field.related_model)
-        model_deps[model] = deps
+            # Only check ForeignKey, OneToOneField (not reverse relations)
+            if hasattr(field, 'related_model') and field.related_model:
+                # Check if it's a forward relation (not reverse)
+                if field.many_to_one or field.one_to_one:
+                    if field.related_model in models and field.related_model != model:
+                        deps.add(field.related_model)
+        model_deps[model] = list(deps)
 
-    # Simple topological sort
-    while model_deps:
-        # Find models with no dependencies
-        no_deps = [m for m, deps in model_deps.items() if not deps]
-        if not no_deps:
-            # Circular dependency - just take remaining models
-            no_deps = list(model_deps.keys())
+    # Improved topological sort
+    sorted_models = []
+    visited = set()
+    temp_mark = set()
 
-        sorted_models.extend(no_deps)
-        for m in no_deps:
-            del model_deps[m]
+    def visit(model):
+        if model in temp_mark:
+            # Circular dependency detected, skip
+            return
+        if model in visited:
+            return
 
-        # Remove resolved dependencies
-        for m in model_deps:
-            model_deps[m] = [d for d in model_deps[m] if d not in no_deps]
+        temp_mark.add(model)
+        for dep in model_deps.get(model, []):
+            visit(dep)
+        temp_mark.remove(model)
+        visited.add(model)
+        sorted_models.append(model)
+
+    for model in models:
+        if model not in visited:
+            visit(model)
 
     return sorted_models
 
