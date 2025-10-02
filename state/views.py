@@ -1,7 +1,8 @@
 from django.shortcuts import render
 from django.views import View
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 from state.models import State
 from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema
@@ -16,6 +17,7 @@ class StateView(View):
 
 @extend_schema(responses=StateSerializer(many=True))
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def get(request):
     states = State.objects.all()
     data = list(states.values())
