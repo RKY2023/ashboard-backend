@@ -19,6 +19,7 @@ jobs:
       - name: Run migrations on Vercel
         env:
           MIGRATION_TOKEN: ${{ secrets.MIGRATION_SECRET_TOKEN }}
+          VERCEL_PROTECTION_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
           VERCEL_URL: ${{ github.event.deployment_status.target_url }}
         run: |
           echo "Running migrations on $VERCEL_URL"
@@ -26,8 +27,8 @@ jobs:
           # Extract the base URL from Vercel deployment URL
           BASE_URL=$(echo $VERCEL_URL | sed 's|https://||' | cut -d'/' -f1)
 
-          # Call the migration endpoint
-          RESPONSE=$(curl -X POST "https://$BASE_URL/migrate/" \
+          # Call the migration endpoint with Vercel protection bypass
+          RESPONSE=$(curl -X POST "https://$BASE_URL/migrate/?x-vercel-protection-bypass=$VERCEL_PROTECTION_BYPASS&x-vercel-set-bypass-cookie=true" \
             -H "X-Migration-Token: $MIGRATION_TOKEN" \
             -H "Content-Type: application/json" \
             -w "\n%{http_code}" \
