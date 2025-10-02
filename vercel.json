@@ -14,5 +14,6 @@
             "src": "/(.*)",
             "dest": "blogs/wsgi.py"
         }
-    ]
+    ],
+    "buildCommand": "bash build.sh"
 }
