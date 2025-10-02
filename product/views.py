@@ -41,6 +41,8 @@ class ProductViewSet(viewsets.ModelViewSet):
         'purchase_price': ['exact', 'lt', 'gt'],
     }
 class ProductInfoAPIView(APIView):
+    serializer_class = ProductInfoSerializer
+
     def get(self, request):
         products = Product.objects.all()
         serializer = ProductInfoSerializer({

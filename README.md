@@ -1,247 +1,162 @@
 # ashboard-backend
-# ashboard-backend
 
+## Development
+https://dev.ashback.rajkumaryd.in/
 
-models 
-default, abstract, proxy
-### default model
-### abstract model
-### proxy model
-They are extension of original model, but not alter original ones.
-e.g. 
 
-In Django REST Framework (DRF), APIView and ViewSet are both ways to build APIs, but they serve different purposes and have different trade-offs.
+## Project Overview
 
-Let’s break it down clearly:
+This is a Django REST Framework backend for a dashboard/ordering system (appears to be pizza/food ordering related). The project uses Django 5.0.7 with DRF and is deployed on Vercel with PostgreSQL (development uses SQLite).
 
-1️⃣ APIView
-What it is:
-The most basic DRF class-based view.
-Think of it like Django’s View, but with DRF’s request/response handling, authentication, and permissions.
+**Main project name**: `blogs` (Django project root)
 
-How it works:
-You manually define each HTTP method (get, post, put, patch, delete, etc.) yourself.
+## Commands
 
-Example:
+### Setup and Development
+```bash
+# Activate virtual environment (if not already activated)
+.venv\Scripts\activate  # Windows
+source .venv/bin/activate  # Unix/Mac
 
-python
-Copy
-Edit
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from .models import Product
-from .serializers import ProductSerializer
+# Install dependencies
+pip install -r requirements.txt
 
-class ProductListCreateAPIView(APIView):
-    def get(self, request):
-        products = Product.objects.all()
-        serializer = ProductSerializer(products, many=True)
-        return Response(serializer.data)
+# Run migrations
+python manage.py migrate
 
-    def post(self, request):
-        serializer = ProductSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-✅ Advantages
+# Create superuser
+python manage.py createsuperuser
 
-Fine-grained control over request handling.
+# Run development server
+python manage.py runserver
 
-Explicit and clear.
+# Create new migrations after model changes
+python manage.py makemigrations
 
-Good for complex, non-standard endpoints.
+# Run specific app migrations
+python manage.py migrate <app_name>
+```
 
-⚠️ Disadvantages
+### Testing and Utilities
+```bash
+# Check for problems in project
+python manage.py check
 
-More code for common CRUD operations.
+# Open Django shell
+python manage.py shell
 
-Repetition if you need similar patterns across models.
+# Collect static files
+python manage.py collectstatic
+```
 
-2️⃣ ViewSet
-What it is:
-A higher-level abstraction that bundles related CRUD actions into a single class.
+## Architecture
 
-How it works:
-You don’t directly define get/post — instead, you define actions like list, retrieve, create, update, destroy.
+### Database Configuration
+- **Local development**: SQLite (`db.sqlite3`)
+- **Production (Vercel)**: PostgreSQL via `dj-database-url`
+- Database switching is controlled by `VERCEL` environment variable in `blogs/settings.py:111-124`
 
-Often paired with routers that automatically generate URLs for you.
-
-Example:
-
-python
-Copy
-Edit
-from rest_framework import viewsets
-from .models import Product
-from .serializers import ProductSerializer
-
-class ProductViewSet(viewsets.ModelViewSet):  # Includes list, create, retrieve, update, destroy
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
-Then in urls.py:
-
-python
-Copy
-Edit
-from rest_framework.routers import DefaultRouter
-from .views import ProductViewSet
-
-router = DefaultRouter()
-router.register(r'products', ProductViewSet)
-
-urlpatterns = router.urls
-✅ Advantages
-
-Less boilerplate for standard CRUD.
-
-URL routing handled automatically by routers.
-
-Easy to extend with custom actions (@action decorator).
-
-⚠️ Disadvantages
-
-Less explicit — magic happens through routers.
-
-Not as flexible for highly customized endpoints.
-
-When to use what
-Use Case	Recommended
-Simple CRUD APIs	ViewSet
-Needs automatic URL routing	ViewSet
-Highly custom behavior per HTTP method	APIView
-API endpoint not tied to a model	APIView
-Learning DRF basics	Start with APIView
-
-If you want, I can make you a side-by-side CRUD implementation showing APIView vs ViewSet for the same Product model so you can compare the code length and URL patterns directly.
-Do you want me to make that?
-
-
-
-
-
-
-
-
-You said:
-apiview vs viewset vs generic view 
-
-
-ChatGPT said:
-Alright — let’s put APIView, Generic Views, and ViewSets side by side so you can see exactly how they differ.
-
-1️⃣ APIView
-Base Level
-
-Most manual — you implement each HTTP method yourself.
-
-Gives maximum flexibility but more code.
-
-Example:
-
-python
-Copy
-Edit
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from .models import Product
-from .serializers import ProductSerializer
-
-class ProductAPIView(APIView):
-    def get(self, request):
-        products = Product.objects.all()
-        serializer = ProductSerializer(products, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        serializer = ProductSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-✅ Pros: Full control, flexible.
-⚠️ Cons: Repetitive for CRUD.
-
-2️⃣ Generic Views
-Mid Level
-
-Inherits from DRF’s GenericAPIView + mixins (ListModelMixin, CreateModelMixin, etc.).
-
-Still flexible, but less boilerplate.
-
-You get CRUD methods from mixins without manually defining them.
-
-Example:
-
-python
-Copy
-Edit
-from rest_framework import generics
-from .models import Product
-from .serializers import ProductSerializer
-
-class ProductListCreateView(generics.ListCreateAPIView):
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
-✅ Pros: Less code, still customizable.
-⚠️ Cons: Must know which mixin/class to use.
-
-Common Generic Views
-
-Class	Purpose
-ListAPIView	Only GET (list)
-CreateAPIView	Only POST
-RetrieveAPIView	Only GET (single)
-UpdateAPIView	PUT/PATCH
-DestroyAPIView	DELETE
-ListCreateAPIView	GET (list) + POST
-RetrieveUpdateDestroyAPIView	GET, PUT/PATCH, DELETE
-
-3️⃣ ViewSet
-High Level
-
-Groups CRUD actions into one class (list, retrieve, create, update, destroy).
-
-Paired with routers to auto-generate URLs.
-
-Example:
-
-python
-Copy
-Edit
-from rest_framework import viewsets
-from .models import Product
-from .serializers import ProductSerializer
-
-class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
-In urls.py:
-
-python
-Copy
-Edit
-from rest_framework.routers import DefaultRouter
-from .views import ProductViewSet
-
-router = DefaultRouter()
-router.register(r'products', ProductViewSet)
-urlpatterns = router.urls
-✅ Pros: Minimal code, auto URLs.
-⚠️ Cons: Less explicit control unless overridden.
-
-Summary Table
-Feature	APIView	Generic Views	ViewSet
-Code Length	Longest	Medium	Shortest
-Flexibility	Highest	Medium	Low–Medium
-Best For	Fully custom logic	Standard CRUD w/ tweaks	Quick CRUD APIs
-URL Handling	Manual	Manual	Automatic via router
-Learning Curve	Low	Medium	Medium–High
-
-If you’re doing 90% standard CRUD, go ViewSet.
-If you need slight customization, go Generic Views.
-If you need full control, go APIView.
-
-If you want, I can make a single Product API implemented in all three styles so you can see how the code size changes from APIView → Generic View → ViewSet. That comparison is really eye-opening.
+### Custom User Model
+- Custom user model: `user.User` (extends `AbstractUser`)
+- Configured via `AUTH_USER_MODEL = 'user.User'` in settings
+- Username-based authentication (not email)
+
+### Model Patterns
+
+#### Abstract Models
+The `commoninfo` app defines abstract base models:
+- `CommonInfo`: Provides `created_at` and `updated_at` fields
+- Used for shared timestamp fields across models
+- Models can inherit from multiple abstract models (see `TestChildAbstract`)
+
+#### Custom Managers and QuerySets
+The `Order` model uses custom manager pattern:
+- `OrderQuerySet`: Provides query methods like `approved()`, `locked()`, `approvable_by(user)`, `lockable_by(user)`
+- `OrderManager`: Exposes queryset methods at manager level
+- Custom permissions: `can_approve`, `can_lock` defined in Order Meta
+
+### Apps Structure
+
+**Core business apps**:
+- `user` - Custom user model
+- `vendor` - Vendor management (linked to User via ForeignKey)
+- `product` - Product catalog
+- `order` - Order and OrderItem models with custom manager
+- `userprofile` - User profile information
+
+**Geographical data apps**:
+- `region`, `state`, `country` - Location hierarchy
+
+**Pizza-specific apps**:
+- `pizza` - Pizza models
+- `topping` - Topping models
+
+**Utility apps**:
+- `commoninfo` - Abstract models for inheritance
+- `dairyentry` - Diary/journal functionality
+- `api` - General API home view
+
+### API Architecture
+
+The codebase uses **Django REST Framework Generic Views** (not ViewSets):
+- `ListCreateAPIView` for list + create operations
+- `RetrieveUpdateDestroyAPIView` for detail operations
+- Filtering via `django-filter` with `DjangoFilterBackend`
+- Pagination configured globally (10 items per page)
+
+**Key patterns**:
+- User-scoped queries: `UserOrderListCreateAPIView` filters orders by `vendor__user=user`
+- Query optimization: Uses `prefetch_related('items__product')` for order listings
+- Commented-out code shows evolution from APIView → Generic Views
+
+### URL Structure
+- Root URLs in `blogs/urls.py`
+- Each app has its own `urls.py` included via `include()`
+- API documentation via drf-spectacular:
+  - `/api/schema/` - OpenAPI schema
+  - `/api/schema/swagger-ui/` - Swagger UI
+  - `/api/schema/redoc/` - ReDoc UI
+- `/silk/` - Django Silk profiling (enabled)
+
+### Third-Party Integrations
+
+**Installed packages**:
+- `djangorestframework` - API framework
+- `drf-spectacular` - OpenAPI/Swagger documentation
+- `django-filter` - Query filtering
+- `django-silk` - Performance profiling
+- `whitenoise` - Static file serving
+- `psycopg2-binary` - PostgreSQL adapter
+- `pillow` - Image processing
+
+### Deployment
+
+**Vercel Configuration** (`vercel.json`):
+- Uses Python 3.11 runtime
+- WSGI entry: `blogs/wsgi.py`
+- Max Lambda size: 100mb
+- All routes proxy to Django WSGI app
+
+### Settings Notes
+- `DEBUG` controlled by environment variable (defaults to False)
+- `ALLOWED_HOSTS = ['*']` (should be restricted in production)
+- Static files served via WhiteNoise with compression
+- SECRET_KEY is hardcoded (should use environment variable in production)
+
+## Development Patterns
+
+### When Adding New Models
+1. Inherit from `CommonInfo` if you need timestamp fields
+2. Add custom managers/querysets for complex filtering
+3. Define custom permissions in Meta if needed
+4. Use `settings.AUTH_USER_MODEL` for User ForeignKeys
+
+### When Adding New Endpoints
+1. Use Generic Views (`generics.ListCreateAPIView`, etc.) not APIView or ViewSets
+2. Add `DjangoFilterBackend` and define `filterset_fields` for filtering
+3. Use `prefetch_related` / `select_related` for relationship optimization
+4. For user-specific data, override `get_queryset()` to filter by request.user
+
+### Query Optimization
+- Order listings use: `Order.objects.prefetch_related('items__product')`
+- This prevents N+1 queries when accessing order items and their products

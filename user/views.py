@@ -2,13 +2,15 @@ from django.shortcuts import render
 from rest_framework.views import APIView as ApiView
 from rest_framework.response import Response
 from .models import User
-from .serializers import UserLoginSerializer
+from .serializers import UserLoginSerializer, UserListSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from .utils import get_tokens_for_user
 # Create your views here.
 class UserView(ApiView):
+    serializer_class = UserListSerializer
+
     def get(self, request):
         users = User.objects.all()
         data = list(users.values())
@@ -23,7 +25,7 @@ class UserView(ApiView):
         return Response({'error': 'Invalid data'}, status=400)
 
 class LoginView(ApiView):
-    serializer = UserLoginSerializer
+    serializer_class = UserLoginSerializer
     permission_classes = [AllowAny]
     def post(self, request, format=None):
         serializer = UserLoginSerializer(data=request.data)
@@ -61,6 +63,8 @@ class LoginView(ApiView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
 class LogoutView(ApiView):
+    serializer_class = UserLoginSerializer
+
     def post(self, request):
         # In a real application, you would handle session or token invalidation here
         return Response({'message': 'Logout successful'})
