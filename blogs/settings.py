@@ -119,6 +119,7 @@ WSGI_APPLICATION = 'blogs.wsgi.application'
 # Database
 import os
 import dj_database_url
+# from dotenv import load_dotenv; load_dotenv('.env.vercel'); import os; print('VERCEL:', os.getenv('VERCEL'));
 
 if os.getenv("VERCEL"):
     db_url = os.getenv("DATABASE_URL", "")
@@ -134,7 +135,7 @@ else:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
-
+# print("APP env:", os.getenv("VERCEL"), DATABASES)
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

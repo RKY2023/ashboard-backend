@@ -15,7 +15,7 @@ media/
 staticfiles/
 
 # ---- Environments ----
-.env
+.env*
 .venv/
 venv/
 env/
