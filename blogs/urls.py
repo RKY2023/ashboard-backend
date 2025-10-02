@@ -53,7 +53,7 @@ urlpatterns = [
     path('user-order/', UserOrderListCreateAPIView.as_view(), name='user-order'),
     path('vendor/', include('vendor.urls')),
     path('user/', include('user.urls')),
-    # path('expenses/', include('expenses.urls')),
+    path('expenses/', include('expenses.urls')),
     # Optional UI:
 
 ]

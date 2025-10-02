@@ -63,7 +63,7 @@ INSTALLED_APPS = [
     'product',
     'order',
     'vendor',
-    # 'expenses',
+    'expenses',
 ]
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
