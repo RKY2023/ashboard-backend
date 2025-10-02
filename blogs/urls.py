@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from blogs.views import home
+from blogs.views import home, run_migrations
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from product.views import ProductInfoAPIView
 from order.views import UserOrderListCreateAPIView
@@ -28,6 +28,7 @@ from rest_framework_simplejwt.views import (
 
 urlpatterns = [
     path('', home),  # Include the region app URLs
+    path('migrate/', run_migrations, name='run_migrations'),  # Migration endpoint
     path('api/', include('api.urls')),  # Include the API app URLs
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),

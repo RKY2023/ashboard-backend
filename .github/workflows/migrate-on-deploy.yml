@@ -1,0 +1,47 @@
+name: Run Migrations on Vercel Deploy
+
+on:
+  # Trigger after successful Vercel deployment
+  deployment_status:
+
+jobs:
+  migrate:
+    name: Run Database Migrations
+    runs-on: ubuntu-latest
+
+    # Only run on successful production deployments
+    if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Production'
+
+    steps:
+      - name: Wait for deployment to be ready
+        run: sleep 10
+
+      - name: Run migrations on Vercel
+        env:
+          MIGRATION_TOKEN: ${{ secrets.MIGRATION_SECRET_TOKEN }}
+          VERCEL_URL: ${{ github.event.deployment_status.target_url }}
+        run: |
+          echo "Running migrations on $VERCEL_URL"
+
+          # Extract the base URL from Vercel deployment URL
+          BASE_URL=$(echo $VERCEL_URL | sed 's|https://||' | cut -d'/' -f1)
+
+          # Call the migration endpoint
+          RESPONSE=$(curl -X POST "https://$BASE_URL/migrate/" \
+            -H "X-Migration-Token: $MIGRATION_TOKEN" \
+            -H "Content-Type: application/json" \
+            -w "\n%{http_code}" \
+            -s)
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+
+          echo "Response: $BODY"
+          echo "HTTP Code: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" -ne 200 ]; then
+            echo "Migration failed with status $HTTP_CODE"
+            exit 1
+          fi
+
+          echo "Migrations completed successfully!"
