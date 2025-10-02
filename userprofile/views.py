@@ -8,8 +8,11 @@ from django.http import JsonResponse
 import json
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission, Group
+from .serializers import UserProfileSerializer
 # Create your views here.
 class UserProfileView(APIView):
+    serializer_class = UserProfileSerializer
+
     def get(self, request, format=None):
         user = request.user
         # with open("request_log.json", "a") as f:

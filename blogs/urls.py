@@ -17,7 +17,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from blogs.views import home, run_migrations
-from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView
+from blogs.spectacular_views import DarkSwaggerView
 from product.views import ProductInfoAPIView
 from order.views import UserOrderListCreateAPIView
 from rest_framework_simplejwt.views import (
@@ -31,7 +32,7 @@ urlpatterns = [
     path('migrate/', run_migrations, name='run_migrations'),  # Migration endpoint
     path('api/', include('api.urls')),  # Include the API app URLs
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/schema/swagger-ui/', DarkSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
     path('silk/', include('silk.urls', namespace='silk')),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
@@ -52,5 +53,6 @@ urlpatterns = [
     path('user-order/', UserOrderListCreateAPIView.as_view(), name='user-order'),
     path('vendor/', include('vendor.urls')),
     path('user/', include('user.urls')),
+    # path('expenses/', include('expenses.urls')),
     # Optional UI:
 ]

@@ -6,6 +6,7 @@ from django.views import View
 from rest_framework import serializers, status, generics, viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 from django.views.decorators.csrf import csrf_exempt
 from django_filters.rest_framework import DjangoFilterBackend
 # import pdb
@@ -30,6 +31,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     lookup_field = 'product_code'
+    permission_classes = [AllowAny]
     # pagination_class = None
     # pdb.set_trace()
     filter_backends = [DjangoFilterBackend]
@@ -41,6 +43,9 @@ class ProductViewSet(viewsets.ModelViewSet):
         'purchase_price': ['exact', 'lt', 'gt'],
     }
 class ProductInfoAPIView(APIView):
+    serializer_class = ProductInfoSerializer
+    permission_classes = [AllowAny]
+
     def get(self, request):
         products = Product.objects.all()
         serializer = ProductInfoSerializer({

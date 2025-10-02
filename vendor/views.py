@@ -15,7 +15,7 @@ class VendorListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = VendorSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = {
-        'vendor_name': ['icontains'],
+        'user__username': ['icontains'],
         'email': ['icontains'],
         'phone_no': ['icontains'],
         'address': ['icontains'],
