@@ -42,7 +42,7 @@ urlpatterns = [
     
     path('admin/', admin.site.urls),
     path('region/', include('region.urls')),
-    path('sate/', include('state.urls')),
+    path('state/', include('state.urls')),
     path('country/', include('country.urls')),
     path('pizza/', include('pizza.urls')),
     path('topping/', include('topping.urls')),
