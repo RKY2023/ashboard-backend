@@ -7,6 +7,8 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from .utils import get_tokens_for_user
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 # Create your views here.
 class UserView(ApiView):
     serializer_class = UserListSerializer
@@ -24,6 +26,7 @@ class UserView(ApiView):
             return Response({'message': 'User created successfully', 'user_id': user.id})
         return Response({'error': 'Invalid data'}, status=400)
 
+@method_decorator(csrf_exempt, name='dispatch')
 class LoginView(ApiView):
     serializer_class = UserLoginSerializer
     permission_classes = [AllowAny]
