@@ -169,9 +169,20 @@ class BankStatementProcessorService:
 
         temp_line = ''
 
+        # Find where transaction data starts by looking for the table header
+        start_parsing = False
+
         for line_no, line in enumerate(lines):
-            if line_no <= 72:  # Skip header lines
+            # Start parsing after we find the transaction table header
+            if not start_parsing:
+                if 'Date' in line and 'Transaction Reference' in line and 'Balance' in line:
+                    start_parsing = True
+                    if self.debug:
+                        logger.debug(f"Start parsing at line {line_no}: {line}")
                 continue
+
+            if self.debug:
+                logger.debug(f"Parsing line {line_no}: {line}")
 
             line = line.replace('TRANSACTION OVERVIEW', '')
 
@@ -184,6 +195,7 @@ class BankStatementProcessorService:
 
             # Check if line ends with a number (balance)
             number_match = re.search(r"\d{1,}\.\d{2}\n", line)
+
             if not number_match:
                 temp_line = line
                 continue
@@ -225,6 +237,9 @@ class BankStatementProcessorService:
             credit_arr.append(match[2].replace('-', '0'))
             debit_arr.append(match[3].replace('-', '0'))
             bal_arr.append(match[4].replace('-', '0'))
+
+            if self.debug:
+                logger.debug(f"Parsed transaction - Date: {date}, Ref: {trans_ref_text.strip()}, Balance: {match[4]}")
 
         # Create DataFrame
         df = pd.DataFrame({
