@@ -12,7 +12,7 @@ import pandas as pd
 from pypdf import PdfReader, PdfWriter
 import PyPDF2
 
-from .models import BankStatement, Transaction, DecryptionKey
+from .models import BankStatement, Transaction, DecryptionKey, Category, Expense
 
 logger = logging.getLogger(__name__)
 
@@ -169,9 +169,20 @@ class BankStatementProcessorService:
 
         temp_line = ''
 
+        # Find where transaction data starts by looking for the table header
+        start_parsing = False
+
         for line_no, line in enumerate(lines):
-            if line_no <= 72:  # Skip header lines
+            # Start parsing after we find the transaction table header
+            if not start_parsing:
+                if 'Date' in line and 'Transaction Reference' in line and 'Balance' in line:
+                    start_parsing = True
+                    if self.debug:
+                        logger.debug(f"Start parsing at line {line_no}: {line}")
                 continue
+
+            if self.debug:
+                logger.debug(f"Parsing line {line_no}: {line}")
 
             line = line.replace('TRANSACTION OVERVIEW', '')
 
@@ -184,6 +195,7 @@ class BankStatementProcessorService:
 
             # Check if line ends with a number (balance)
             number_match = re.search(r"\d{1,}\.\d{2}\n", line)
+
             if not number_match:
                 temp_line = line
                 continue
@@ -226,6 +238,9 @@ class BankStatementProcessorService:
             debit_arr.append(match[3].replace('-', '0'))
             bal_arr.append(match[4].replace('-', '0'))
 
+            if self.debug:
+                logger.debug(f"Parsed transaction - Date: {date}, Ref: {trans_ref_text.strip()}, Balance: {match[4]}")
+
         # Create DataFrame
         df = pd.DataFrame({
             'date': date_arr,
@@ -240,7 +255,7 @@ class BankStatementProcessorService:
         return df
 
     def _save_transactions(self, dataframe: pd.DataFrame) -> None:
-        """Save transactions to database"""
+        """Save transactions to database and create expenses for debits"""
         transactions = []
 
         for _, row in dataframe.iterrows():
@@ -256,9 +271,21 @@ class BankStatementProcessorService:
             )
             transactions.append(transaction)
 
-        # Bulk create for better performance
-        Transaction.objects.bulk_create(transactions)
-        logger.info(f"Saved {len(transactions)} transactions to database")
+        # Bulk create transactions for better performance
+        created_transactions = Transaction.objects.bulk_create(transactions)
+        logger.info(f"Saved {len(created_transactions)} transactions to database")
+
+        # Create expenses for debit transactions
+        expense_mapper = ExpenseCategoryMapper(self.bank_statement.user)
+        expenses_created = 0
+
+        for transaction in created_transactions:
+            if transaction.debit > 0:
+                expense = expense_mapper.create_expense_from_transaction(transaction)
+                if expense:
+                    expenses_created += 1
+
+        logger.info(f"Created {expenses_created} expenses from {len(created_transactions)} transactions")
 
 
 class BankStatementHelper:
@@ -293,3 +320,111 @@ class BankStatementHelper:
         except (ValueError, IndexError):
             pass
         return None
+
+
+class ExpenseCategoryMapper:
+    """Service to categorize expenses based on transaction references"""
+
+    def __init__(self, user):
+        self.user = user
+        # Cache categories for this user (default + user's custom)
+        self._categories_cache = None
+
+    def _get_categories(self):
+        """Get all applicable categories (default + user custom)"""
+        if self._categories_cache is None:
+            from django.db.models import Q
+            self._categories_cache = list(
+                Category.objects.filter(
+                    Q(is_default=True) | Q(user=self.user)
+                ).order_by('-is_default', 'name')  # Prioritize user custom over default
+            )
+        return self._categories_cache
+
+    def categorize_transaction(self, transaction_ref: str) -> Optional[Category]:
+        """
+        Match transaction reference against category keywords.
+        Returns the first matching category (case-insensitive).
+        """
+        if not transaction_ref:
+            return None
+
+        transaction_ref_lower = transaction_ref.lower()
+
+        for category in self._get_categories():
+            for keyword in category.keywords:
+                if keyword.lower() in transaction_ref_lower:
+                    logger.debug(f"Matched category '{category.name}' with keyword '{keyword}'")
+                    return category
+
+        return None
+
+    def extract_description(self, transaction_ref: str) -> str:
+        """
+        Extract clean description from transaction reference.
+        Removes UPI/DR/ prefixes and cleans up the text.
+        """
+        if not transaction_ref:
+            return "Unknown"
+
+        # Remove common prefixes
+        description = transaction_ref
+        prefixes = ['UPI/DR/', 'UPI/CR/', 'NEFT*', 'CHQ TRFR FROM', 'ACHDr NACH']
+        for prefix in prefixes:
+            if description.startswith(prefix):
+                description = description[len(prefix):]
+                break
+
+        # Extract merchant/payee name (usually first meaningful part)
+        # Pattern: transaction_id/merchant_name/bank/...
+        parts = description.split('/')
+        if len(parts) >= 2:
+            # Second part is usually merchant name
+            merchant = parts[1].strip()
+            if merchant:
+                # Clean up merchant name
+                merchant = merchant.replace('_', ' ').title()
+                return merchant
+
+        # Fallback: just clean up the first 100 chars
+        description = description[:100].strip()
+        return description if description else "Unknown"
+
+    def create_expense_from_transaction(self, transaction: Transaction) -> Optional[Expense]:
+        """
+        Create an Expense record from a Transaction.
+        Only for debit transactions (expenses).
+        """
+        # Only process debit transactions
+        if transaction.debit <= 0:
+            return None
+
+        # Check if expense already exists
+        if hasattr(transaction, 'expense'):
+            logger.debug(f"Expense already exists for transaction {transaction.id}")
+            return transaction.expense
+
+        # Categorize
+        category = self.categorize_transaction(transaction.transaction_id_ref)
+        is_auto_categorized = category is not None
+
+        # Extract description
+        description = self.extract_description(transaction.transaction_id_ref)
+
+        # Create expense
+        expense = Expense.objects.create(
+            transaction=transaction,
+            user=transaction.user,
+            category=category,
+            amount=transaction.debit,
+            date=transaction.date,
+            description=description,
+            is_auto_categorized=is_auto_categorized
+        )
+
+        logger.info(
+            f"Created expense: {expense.id} - {description[:30]} - "
+            f"₹{expense.amount} - Category: {category.name if category else 'Uncategorized'}"
+        )
+
+        return expense
