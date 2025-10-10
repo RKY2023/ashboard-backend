@@ -47,6 +47,8 @@ urlpatterns = [
     path('pizza/', include('pizza.urls')),
     path('topping/', include('topping.urls')),
     path('userprofile/', include('userprofile.urls')),
+    path('diaryentry/', include('dairyentry.urls')),  # Legacy path
+    path('api/diaryentry/', include('dairyentry.urls')),  # API path for Swagger
     path('product/', include('product.urls')),
     path('productInfo/', ProductInfoAPIView.as_view(), name='product_info'),
     path('order/', include('order.urls')),
