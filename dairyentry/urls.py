@@ -1,9 +1,26 @@
-from django.urls import path
-from .views import DiaryEntryView, DiaryEntryShareView, AttachmentView, TagView
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import (
+    DiaryEntryViewSet,
+    TimelineEventViewSet,
+    TimelineCheckpointViewSet,
+    TagViewSet,
+    AttachmentViewSet,
+    DiaryEntryShareViewSet,
+    EventContentViewSet,
+    FoodRoutineViewSet
+)
+
+router = DefaultRouter()
+router.register(r'diary-entries', DiaryEntryViewSet, basename='diary-entry')
+router.register(r'timeline-events', TimelineEventViewSet, basename='timeline-event')
+router.register(r'checkpoints', TimelineCheckpointViewSet, basename='checkpoint')
+router.register(r'tags', TagViewSet, basename='tag')
+router.register(r'attachments', AttachmentViewSet, basename='attachment')
+router.register(r'shares', DiaryEntryShareViewSet, basename='share')
+router.register(r'event-contents', EventContentViewSet, basename='event-content')
+router.register(r'food-routines', FoodRoutineViewSet, basename='food-routine')
 
 urlpatterns = [
-    path('diary-entries/', DiaryEntryView.as_view(), name='diary-entry-list'),
-    path('diary-entries/share/', DiaryEntryShareView.as_view(), name='diary-entry-share'),
-    path('attachments/', AttachmentView.as_view(), name='attachment-list'),
-    path('tags/', TagView.as_view(), name='tag-list'),
+    path('', include(router.urls)),
 ]

@@ -39,8 +39,18 @@ htmlcov/
 nosetests.xml
 coverage.xml
 
+# ---- Documentation ----
+# Keep all documentation files
+docs/
+# !docs/
+# !docs/**/*.md
+# !**/*.md
+# # But ignore generated documentation artifacts
+# docs/_build/
+# docs/.doctrees/
+
 # ---- Migrations ----
-# (optional: ignore if you don’t want migrations tracked per developer)
+# (optional: ignore if you don't want migrations tracked per developer)
 # */migrations/*.py
 # !*/migrations/__init__.py
 

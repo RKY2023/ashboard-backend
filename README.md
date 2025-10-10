@@ -6,9 +6,20 @@ https://dev.ashback.rajkumaryd.in/
 
 ## Project Overview
 
-This is a Django REST Framework backend for a dashboard/ordering system (appears to be pizza/food ordering related). The project uses Django 5.0.7 with DRF and is deployed on Vercel with PostgreSQL (development uses SQLite).
+This is a Django REST Framework backend for a personal dashboard system featuring diary entries, expense tracking, and more. The project uses Django 5.2.4 with DRF and is deployed on Vercel with PostgreSQL (development uses SQLite).
 
 **Main project name**: `blogs` (Django project root)
+
+## 📚 Documentation
+
+Comprehensive documentation is available in the [`docs/`](docs/) directory:
+
+- **[Documentation Index](docs/README.md)** - Complete documentation hub
+- **[Diary Entry Module](docs/dairyentry/)** - Personal diary, timeline events, food tracking
+- **[Expenses Module](docs/expenses/)** - Expense tracking and financial management
+- **[API Documentation](docs/api/)** - API conversion notes and export endpoints
+- **[Utilities](docs/utils/)** - Migration and deployment guides
+- **[Swagger UI](http://localhost:8000/api/schema/swagger-ui/)** - Interactive API documentation (local)
 
 ## Commands
 
@@ -160,3 +171,17 @@ The codebase uses **Django REST Framework Generic Views** (not ViewSets):
 ### Query Optimization
 - Order listings use: `Order.objects.prefetch_related('items__product')`
 - This prevents N+1 queries when accessing order items and their products
+
+
+
+Website monitoring 
+- server down
+  - SBI, other bank, govt website, Tolliinfo
+- Website status changes, page updated.
+- 
+
+All these updates leads to news feedback
+Notification services 
+  - Calendar
+  - home alarms
+  - Updates (entry, exit, light, electricity, monitoring devices)

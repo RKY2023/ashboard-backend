@@ -81,13 +81,21 @@ REST_FRAMEWORK = {
     ],
 }
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Your Project API',
-    'DESCRIPTION': 'Your project description',
+    'TITLE': 'Ashboard API',
+    'DESCRIPTION': 'Comprehensive API for personal dashboard including diary entries, food routines, expenses tracking, and more.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'SWAGGER_UI_DIST': 'SIDECAR',
     'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
     'REDOC_DIST': 'SIDECAR',
+    'COMPONENT_SPLIT_REQUEST': True,
+    'TAGS': [
+        {'name': 'Diary Entry', 'description': 'Manage personal diary entries with enhanced daily tracking'},
+        {'name': 'Event Content', 'description': 'Timeline-based content organization for diary entries'},
+        {'name': 'Food Routine', 'description': 'Daily food and nutrition tracking'},
+        {'name': 'Timeline Events', 'description': 'Organize diary entries into timeline events and milestones'},
+        {'name': 'Tags', 'description': 'Manage tags for diary entries and timeline events'},
+    ],
 }
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
