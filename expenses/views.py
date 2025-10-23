@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from django.db.models import Sum, Q, Count
@@ -43,6 +44,7 @@ class BankStatementViewSet(viewsets.ModelViewSet):
     """
     serializer_class = BankStatementSerializer
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'is_encrypted']
     search_fields = ['original_filename']
@@ -59,6 +61,12 @@ class BankStatementViewSet(viewsets.ModelViewSet):
         Upload a new bank statement PDF.
         The file will be queued for processing.
         """
+        # Debug logging
+        logger.info(f"Upload request - Content-Type: {request.content_type}")
+        logger.info(f"Upload request - Parser: {request.accepted_renderer}")
+        logger.info(f"Upload request - Data keys: {request.data.keys()}")
+        logger.info(f"Upload request - FILES: {request.FILES}")
+
         serializer = BankStatementUploadSerializer(data=request.data)
         if serializer.is_valid():
             file = serializer.validated_data['file']
@@ -77,6 +85,7 @@ class BankStatementViewSet(viewsets.ModelViewSet):
                 'status': 'pending'
             }, status=status.HTTP_201_CREATED)
 
+        logger.error(f"Upload validation errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post'])
