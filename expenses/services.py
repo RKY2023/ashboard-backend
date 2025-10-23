@@ -12,6 +12,13 @@ import pandas as pd
 from pypdf import PdfReader, PdfWriter
 import PyPDF2
 
+try:
+    import pdfplumber
+    PDFPLUMBER_AVAILABLE = True
+except ImportError:
+    PDFPLUMBER_AVAILABLE = False
+    logger.warning("pdfplumber not available. Table extraction will use fallback method.")
+
 from .models import BankStatement, Transaction, DecryptionKey, Category, Expense
 
 logger = logging.getLogger(__name__)
@@ -55,8 +62,25 @@ class BankStatementProcessorService:
             # Parse transactions from text
             dataframe = self._parse_transactions_from_text(text_content)
 
+            # If no transactions found, try table extraction middleware
+            if len(dataframe) == 0:
+                logger.info("No transactions found with text parsing. Attempting table extraction...")
+                dataframe = self._extract_transactions_from_table(file_path)
+
+            # Check if any transactions were found after both methods
+            if len(dataframe) == 0:
+                raise Exception(
+                    "No transactions found in the bank statement. "
+                    "Please ensure the PDF contains valid transaction data in a supported format. "
+                    "Supported formats: State Bank of India statement with Date, Transaction Reference, and Balance columns."
+                )
+
             # Save transactions to database
-            self._save_transactions(dataframe)
+            transaction_count = self._save_transactions(dataframe)
+
+            # Verify transactions were actually saved
+            if transaction_count == 0:
+                raise Exception("Failed to save transactions to database. No transactions were created.")
 
             # Clean up temporary files
             if decrypted_path and os.path.exists(decrypted_path):
@@ -67,7 +91,7 @@ class BankStatementProcessorService:
             self.bank_statement.processed_at = timezone.now()
             self.bank_statement.save()
 
-            logger.info(f"Successfully processed bank statement: {self.bank_statement.id}")
+            logger.info(f"Successfully processed bank statement: {self.bank_statement.id} with {transaction_count} transactions")
             return True
 
         except Exception as e:
@@ -179,6 +203,11 @@ class BankStatementProcessorService:
                     start_parsing = True
                     if self.debug:
                         logger.debug(f"Start parsing at line {line_no}: {line}")
+                # Date (Value Date) Narration Ref/Cheque No. Debit Credit Balance
+                if 'Date' in line and 'Narration' in line and 'Balance' in line:
+                    start_parsing = True
+                    if self.debug:
+                        logger.debug(f"Start parsing at line {line_no}: {line}")
                 continue
 
             if self.debug:
@@ -254,8 +283,379 @@ class BankStatementProcessorService:
         logger.info(f"Parsed {len(df)} transactions")
         return df
 
-    def _save_transactions(self, dataframe: pd.DataFrame) -> None:
-        """Save transactions to database and create expenses for debits"""
+    def _extract_transactions_from_table(self, file_path: str) -> pd.DataFrame:
+        """
+        Middleware function to extract transactions from tables in PDF.
+        Uses pdfplumber for proper table detection and extraction.
+        This is a fallback when the text-based parsing fails.
+
+        Note: Header is detected only once (usually on first page).
+        Subsequent pages contain only data rows using the same column structure.
+        """
+        logger.info("Starting table extraction middleware...")
+
+        if not PDFPLUMBER_AVAILABLE:
+            logger.warning("pdfplumber not available, falling back to text-based table extraction")
+            return self._extract_transactions_from_text_table(file_path)
+
+        date_arr = []
+        trans_ref_arr = []
+        chq_ref_arr = []
+        credit_arr = []
+        debit_arr = []
+        bal_arr = []
+
+        # Column indices - set once when header is found
+        date_col = None
+        narration_col = None
+        debit_col = None
+        credit_col = None
+        balance_col = None
+        ref_col = None
+        header_found = False
+
+        try:
+            with pdfplumber.open(file_path) as pdf:
+                logger.info(f"Processing {len(pdf.pages)} pages with pdfplumber")
+
+                for page_num, page in enumerate(pdf.pages, 1):
+                    # Extract tables from the page
+                    tables = page.extract_tables()
+
+                    if not tables:
+                        logger.debug(f"No tables found on page {page_num}")
+                        continue
+
+                    logger.info(f"Found {len(tables)} table(s) on page {page_num}")
+
+                    for table_num, table in enumerate(tables, 1):
+                        if not table:
+                            continue
+
+                        logger.debug(f"Processing table {table_num} on page {page_num}")
+
+                        # If header not found yet, check if THIS table has the header
+                        if not header_found:
+                            # Look for header row in this table
+                            has_transaction_header = False
+
+                            for idx, row in enumerate(table):
+                                if not row:
+                                    continue
+
+                                # Convert row to lowercase for comparison
+                                row_lower = [str(cell).lower().strip() if cell else '' for cell in row]
+                                print('==>', row_lower)
+
+                                # Check if this row contains the transaction table headers
+                                has_date = any(keyword in cell for cell in row_lower
+                                                  for keyword in ['date', 'date (value date)'])
+                                has_narration = any(keyword in cell for cell in row_lower
+                                                  for keyword in ['narration', 'transaction', 'description', 'particulars'])
+                                has_debit = any('debit' in cell or 'withdrawal' in cell for cell in row_lower)
+                                has_credit = any('credit' in cell or 'deposit' in cell for cell in row_lower)
+                                has_balance = any('balance' in cell for cell in row_lower)
+
+                                # If we find at least 4 of these key columns, it's the transaction header
+                                key_columns_found = sum([has_date, has_narration, has_debit, has_credit, has_balance])
+
+                                if key_columns_found >= 4:
+                                    header_row_index = idx
+                                    logger.info(f"✓ Found transaction table header at row {idx} in table {table_num} on page {page_num}")
+                                    logger.info(f"Header columns: {row}")
+
+                                    # Find column indices from the header
+                                    for col_idx, col_name in enumerate(row_lower):
+                                        # if 'date' in col_name and 'value' not in col_name:
+                                        #     date_col = col_idx
+                                        if 'date' in col_name:
+                                            date_col = col_idx
+                                        elif 'transaction' in col_name or 'narration' in col_name or 'description' in col_name or 'particulars' in col_name:
+                                            narration_col = col_idx
+                                        elif 'debit' in col_name or 'withdrawal' in col_name:
+                                            debit_col = col_idx
+                                        elif 'credit' in col_name or 'deposit' in col_name:
+                                            credit_col = col_idx
+                                        elif 'balance' in col_name:
+                                            balance_col = col_idx
+                                        elif 'ref' in col_name or 'cheque' in col_name:
+                                            ref_col = col_idx
+
+                                    # Validate we have minimum required columns
+                                    if date_col is not None and balance_col is not None:
+                                        has_transaction_header = True
+                                        header_found = True  # Set global flag - won't check any more tables
+                                        logger.info(f"✓ Header detected! Column positions saved globally:")
+                                        logger.info(f"  Date:{date_col}, Narration:{narration_col}, Debit:{debit_col}, Credit:{credit_col}, Balance:{balance_col}, Ref:{ref_col}")
+                                        logger.info(f"  All subsequent tables will use this column structure")
+
+                                        # Process remaining rows in this table (after header)
+                                        start_row = header_row_index + 1
+                                        for row_num, row in enumerate(table[start_row:], start_row + 1):
+                                            self._process_transaction_row(
+                                                row, row_num, page_num, table_num,
+                                                date_col, narration_col, debit_col, credit_col, balance_col, ref_col,
+                                                date_arr, trans_ref_arr, chq_ref_arr, credit_arr, debit_arr, bal_arr
+                                            )
+                                    else:
+                                        logger.warning(f"Header-like row found but missing required columns (date or balance)")
+
+                                    break  # Stop scanning this table
+
+                            # If this table doesn't have transaction header, skip it
+                            if not has_transaction_header:
+                                logger.debug(f"Table {table_num} on page {page_num} is not a transaction table - skipping")
+                                continue
+
+                        else:
+                            # Header already found in a previous table
+                            # Process ALL rows in this table as data rows (no header check)
+                            logger.info(f"✓ Processing data table {table_num} on page {page_num} (using saved column structure from earlier)")
+
+                            for row_num, row in enumerate(table, 1):
+                                self._process_transaction_row(
+                                    row, row_num, page_num, table_num,
+                                    date_col, narration_col, debit_col, credit_col, balance_col, ref_col,
+                                    date_arr, trans_ref_arr, chq_ref_arr, credit_arr, debit_arr, bal_arr
+                                )
+
+        except Exception as e:
+            logger.error(f"Error during table extraction: {str(e)}")
+            # Fall back to text-based extraction
+            return self._extract_transactions_from_text_table(file_path)
+
+        # Create DataFrame
+        df = pd.DataFrame({
+            'date': date_arr,
+            'transactionIdRef': trans_ref_arr,
+            'chequeRefNo': chq_ref_arr,
+            'credit': credit_arr,
+            'debit': debit_arr,
+            'balance': bal_arr
+        })
+
+        logger.info(f"Table extraction middleware found {len(df)} transactions")
+
+        if len(df) > 0:
+            logger.info(f"Sample transaction: {df.iloc[0].to_dict()}")
+
+        return df
+
+    def _process_transaction_row(self, row, row_num, page_num, table_num,
+                                  date_col, narration_col, debit_col, credit_col, balance_col, ref_col,
+                                  date_arr, trans_ref_arr, chq_ref_arr, credit_arr, debit_arr, bal_arr):
+        """
+        Helper method to process a single transaction row.
+        Extracts date, narration, amounts and appends to arrays.
+        """
+        if not row or len(row) <= max(filter(None, [date_col, balance_col])):
+            return
+
+        try:
+            # Extract date
+            date_str = str(row[date_col]).strip() if row[date_col] else ''
+            if not date_str or date_str.lower() in ['none', '']:
+                return
+
+            # Parse date - handle multiple formats
+            # Format 1: DD-MM-YY or DD/MM/YY
+            date_match = re.search(r'(\d{2})[/-](\d{2})[/-](\d{2,4})', date_str)
+
+            # Format 2: DD-Mon-YY (e.g., 04-Mar-25)
+            if not date_match:
+                date_match = re.search(r'(\d{2})-([A-Za-z]{3})-(\d{2,4})', date_str)
+                if date_match:
+                    day, month_str, year = date_match.groups()
+                    # Convert month name to number
+                    month_map = {
+                        'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+                        'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
+                        'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+                    }
+                    month = month_map.get(month_str.lower(), '01')
+                    if len(year) == 2:
+                        year = f"20{year}"
+                    formatted_date = f"{year}-{month}-{day.zfill(2)}"
+                else:
+                    return  # Skip if no valid date
+            else:
+                day, month, year = date_match.groups()
+                if len(year) == 2:
+                    year = f"20{year}"
+                formatted_date = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+
+            # Extract narration/transaction reference
+            narration = ''
+            if narration_col is not None and narration_col < len(row):
+                narration = str(row[narration_col]).strip() if row[narration_col] else ''
+
+            # Extract reference/cheque number
+            chq_ref = ''
+            if ref_col is not None and ref_col < len(row):
+                chq_ref = str(row[ref_col]).strip() if row[ref_col] else ''
+                # Clean up None/null values
+                if chq_ref.lower() in ['none', 'null', '']:
+                    chq_ref = ''
+
+            # Extract amounts (clean up commas and handle None/empty)
+            def clean_amount(value):
+                if not value or str(value).lower() in ['none', 'null', '']:
+                    return '0'
+                # Remove commas and whitespace
+                cleaned = str(value).replace(',', '').strip()
+                # Remove any currency symbols
+                cleaned = re.sub(r'[₹$€£]', '', cleaned)
+                # Extract just the number
+                match = re.search(r'(\d+\.?\d*)', cleaned)
+                return match.group(1) if match else '0'
+
+            debit = '0'
+            if debit_col is not None and debit_col < len(row):
+                debit = clean_amount(row[debit_col])
+
+            credit = '0'
+            if credit_col is not None and credit_col < len(row):
+                credit = clean_amount(row[credit_col])
+
+            balance = clean_amount(row[balance_col]) if balance_col < len(row) else '0'
+
+            # Skip rows with invalid balance
+            if balance == '0' or not balance:
+                return
+
+            # Add to arrays
+            date_arr.append(formatted_date)
+            trans_ref_arr.append(narration[:500] if narration else 'N/A')
+            chq_ref_arr.append(chq_ref)
+            credit_arr.append(credit)
+            debit_arr.append(debit)
+            bal_arr.append(balance)
+
+            if self.debug:
+                logger.debug(
+                    f"Page {page_num}, Row {row_num}: Date={formatted_date}, "
+                    f"Narration={narration[:50]}, Debit={debit}, Credit={credit}, Balance={balance}"
+                )
+
+        except Exception as e:
+            logger.warning(f"Failed to parse row {row_num} on page {page_num}, table {table_num}: {str(e)}")
+
+    def _extract_transactions_from_text_table(self, file_path: str) -> pd.DataFrame:
+        """
+        Fallback text-based table extraction when pdfplumber is not available.
+        Extracts text first, then parses table structure from text.
+        """
+        logger.info("Using fallback text-based table extraction...")
+
+        # Extract text from PDF
+        text_content = self._convert_pdf_to_text(file_path)
+        lines = text_content.split('\n')
+
+        date_arr = []
+        trans_ref_arr = []
+        chq_ref_arr = []
+        credit_arr = []
+        debit_arr = []
+        bal_arr = []
+
+        header_found = False
+
+        for line_no, line in enumerate(lines):
+            line_lower = line.lower()
+
+            # Look for table headers
+            if not header_found:
+                headers_present = sum([
+                    'date' in line_lower,
+                    'transaction' in line_lower or 'narration' in line_lower or 'description' in line_lower,
+                    'debit' in line_lower,
+                    'credit' in line_lower,
+                    'balance' in line_lower
+                ])
+
+                if headers_present >= 3:
+                    header_found = True
+                    logger.info(f"Table header found at line {line_no}: {line}")
+                    continue
+
+            # Parse data rows
+            if header_found:
+                if not line.strip():
+                    continue
+
+                date_match = re.match(r'^(\d{2}[/-]\d{2}[/-]\d{2,4})', line.strip())
+
+                if date_match:
+                    try:
+                        date_str = date_match.group(1)
+                        date_parts = re.split(r'[/-]', date_str)
+
+                        if len(date_parts) == 3:
+                            day, month, year = date_parts
+                            if len(year) == 2:
+                                year = f"20{year}"
+
+                            formatted_date = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+
+                            # Extract amounts
+                            amounts = re.findall(r'(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)', line)
+                            amounts = [amt.replace(',', '') for amt in amounts]
+
+                            if len(amounts) >= 1:
+                                balance = amounts[-1]
+                                debit = '0'
+                                credit = '0'
+
+                                if len(amounts) >= 3:
+                                    debit = amounts[-3]
+                                    credit = amounts[-2]
+                                elif len(amounts) == 2:
+                                    if re.search(r'\bdr\b|\bdebit\b', line, re.IGNORECASE):
+                                        debit = amounts[-2]
+                                    else:
+                                        credit = amounts[-2]
+
+                                # Extract narration
+                                line_without_date = line[date_match.end():].strip()
+                                trans_ref = line_without_date
+                                for amt in amounts:
+                                    trans_ref = trans_ref.replace(amt, '').replace(',', '')
+                                trans_ref = ' '.join(trans_ref.split())
+
+                                # Extract cheque ref
+                                chq_ref = ''
+                                chq_match = re.search(r'\b(\d{6,})\b', trans_ref)
+                                if chq_match:
+                                    chq_ref = chq_match.group(1)
+
+                                date_arr.append(formatted_date)
+                                trans_ref_arr.append(trans_ref[:500])
+                                chq_ref_arr.append(chq_ref)
+                                credit_arr.append(credit)
+                                debit_arr.append(debit)
+                                bal_arr.append(balance)
+
+                    except Exception as e:
+                        logger.warning(f"Failed to parse line {line_no}: {str(e)}")
+                        continue
+
+        df = pd.DataFrame({
+            'date': date_arr,
+            'transactionIdRef': trans_ref_arr,
+            'chequeRefNo': chq_ref_arr,
+            'credit': credit_arr,
+            'debit': debit_arr,
+            'balance': bal_arr
+        })
+
+        logger.info(f"Text-based table extraction found {len(df)} transactions")
+        return df
+
+    def _save_transactions(self, dataframe: pd.DataFrame) -> int:
+        """
+        Save transactions to database and create expenses for debits.
+        Returns the number of transactions saved.
+        """
         transactions = []
 
         for _, row in dataframe.iterrows():
@@ -273,7 +673,8 @@ class BankStatementProcessorService:
 
         # Bulk create transactions for better performance
         created_transactions = Transaction.objects.bulk_create(transactions)
-        logger.info(f"Saved {len(created_transactions)} transactions to database")
+        transaction_count = len(created_transactions)
+        logger.info(f"Saved {transaction_count} transactions to database")
 
         # Create expenses for debit transactions
         expense_mapper = ExpenseCategoryMapper(self.bank_statement.user)
@@ -285,7 +686,9 @@ class BankStatementProcessorService:
                 if expense:
                     expenses_created += 1
 
-        logger.info(f"Created {expenses_created} expenses from {len(created_transactions)} transactions")
+        logger.info(f"Created {expenses_created} expenses from {transaction_count} transactions")
+
+        return transaction_count
 
 
 class BankStatementHelper:
