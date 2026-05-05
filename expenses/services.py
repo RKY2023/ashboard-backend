@@ -82,10 +82,6 @@ class BankStatementProcessorService:
             if transaction_count == 0:
                 raise Exception("Failed to save transactions to database. No transactions were created.")
 
-            # Clean up temporary files
-            if decrypted_path and os.path.exists(decrypted_path):
-                os.remove(decrypted_path)
-
             # Update status
             self.bank_statement.status = 'completed'
             self.bank_statement.processed_at = timezone.now()
@@ -100,6 +96,11 @@ class BankStatementProcessorService:
             self.bank_statement.error_message = str(e)
             self.bank_statement.save()
             return False
+
+        finally:
+            # Always clean up temporary decrypted file
+            if decrypted_path and os.path.exists(decrypted_path):
+                os.remove(decrypted_path)
 
     def _is_pdf_encrypted(self, file_path: str) -> bool:
         """Check if PDF is encrypted"""

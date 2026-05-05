@@ -300,25 +300,14 @@ class CategoryViewSet(viewsets.ModelViewSet):
         """Get category statistics with expense counts"""
         queryset = self.get_queryset()
 
-        category_stats = []
-        for category in queryset:
-            expense_count = Expense.objects.filter(
-                user=request.user,
-                category=category
-            ).count()
-            total_amount = Expense.objects.filter(
-                user=request.user,
-                category=category
-            ).aggregate(total=Sum('amount'))['total'] or 0
-
-            category_stats.append({
-                'id': category.id,
-                'name': category.name,
-                'icon': category.icon,
-                'color': category.color,
-                'expense_count': expense_count,
-                'total_amount': float(total_amount)
-            })
+        category_stats = list(
+            queryset.annotate(
+                expense_count=Count('expense', filter=Q(expense__user=request.user)),
+                total_amount=Sum('expense__amount', filter=Q(expense__user=request.user)),
+            ).values('id', 'name', 'icon', 'color', 'expense_count', 'total_amount')
+        )
+        for stat in category_stats:
+            stat['total_amount'] = float(stat['total_amount'] or 0)
 
         return Response(category_stats)
 
