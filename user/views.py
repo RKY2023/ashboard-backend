@@ -23,7 +23,7 @@ class UserView(ApiView):
         email = request.data.get('email')
         password = request.data.get('password')
         if username and email and password:
-            user = User.objects.create(username=username, email=email, password=password)
+            user = User.objects.create_user(username=username, email=email, password=password)
             return Response({'message': 'User created successfully', 'user_id': user.id})
         return Response({'error': 'Invalid data'}, status=400)
 
