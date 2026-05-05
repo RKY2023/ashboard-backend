@@ -70,7 +70,8 @@ python manage.py collectstatic
 ### Custom User Model
 - Custom user model: `user.User` (extends `AbstractUser`)
 - Configured via `AUTH_USER_MODEL = 'user.User'` in settings
-- Username-based authentication (not email)
+- Login is **email + password** (`user/views.py:LoginView`); the same field also accepts a mobile number
+- JWT auth via `rest_framework_simplejwt` — see `/api/token/`, `/api/token/refresh/`, `/api/token/verify/`
 
 ### Model Patterns
 
@@ -89,36 +90,41 @@ The `Order` model uses custom manager pattern:
 ### Apps Structure
 
 **Core business apps**:
-- `user` - Custom user model
+- `user` - Custom user model with email/mobile-based JWT login
+- `userprofile` - User profile information
+- `dairyentry` - Diary entries, timeline events, food routine, tags, attachments (mounted at `/diaryentry/` and `/api/diaryentry/`)
+- `expenses` - Bank statement upload + parsing, transactions, expense categorisation
 - `vendor` - Vendor management (linked to User via ForeignKey)
 - `product` - Product catalog
 - `order` - Order and OrderItem models with custom manager
-- `userprofile` - User profile information
 
 **Geographical data apps**:
 - `region`, `state`, `country` - Location hierarchy
 
-**Pizza-specific apps**:
-- `pizza` - Pizza models
-- `topping` - Topping models
+**Legacy / sample apps** (still in `INSTALLED_APPS`):
+- `pizza`, `topping` - Sample pizza/topping models from earlier scaffolding
 
 **Utility apps**:
-- `commoninfo` - Abstract models for inheritance
-- `dairyentry` - Diary/journal functionality
+- `commoninfo` - Abstract `CommonInfo` model providing `created_at`/`updated_at`
 - `api` - General API home view
 
 ### API Architecture
 
-The codebase uses **Django REST Framework Generic Views** (not ViewSets):
-- `ListCreateAPIView` for list + create operations
-- `RetrieveUpdateDestroyAPIView` for detail operations
+The codebase mixes two DRF patterns:
+
+**Generic Views** (older apps: `order`, `product`, `region`, etc.):
+- `ListCreateAPIView` for list + create
+- `RetrieveUpdateDestroyAPIView` for detail
+- User-scoped queries filter via `get_queryset()` (e.g. `UserOrderListCreateAPIView` filters by `vendor__user=user`)
+
+**ViewSets + DefaultRouter** (newer apps: `dairyentry`, `expenses`):
+- Full CRUD ViewSets registered through `rest_framework.routers.DefaultRouter`
+- Auto-generated routes (`/diary-entries/`, `/bank-statements/`, etc.)
+
+**Common to both**:
 - Filtering via `django-filter` with `DjangoFilterBackend`
 - Pagination configured globally (10 items per page)
-
-**Key patterns**:
-- User-scoped queries: `UserOrderListCreateAPIView` filters orders by `vendor__user=user`
-- Query optimization: Uses `prefetch_related('items__product')` for order listings
-- Commented-out code shows evolution from APIView → Generic Views
+- `prefetch_related` / `select_related` for relationship traversal (e.g. `prefetch_related('items__product')` on order listings)
 
 ### URL Structure
 - Root URLs in `blogs/urls.py`
@@ -133,11 +139,15 @@ The codebase uses **Django REST Framework Generic Views** (not ViewSets):
 
 **Installed packages**:
 - `djangorestframework` - API framework
-- `drf-spectacular` - OpenAPI/Swagger documentation
+- `djangorestframework-simplejwt` - JWT auth (access/refresh tokens)
+- `drf-spectacular` (+ `drf-spectacular-sidecar`) - OpenAPI/Swagger documentation
+- `django-cors-headers` - CORS handling
 - `django-filter` - Query filtering
-- `django-silk` - Performance profiling
+- `django-silk` - Performance profiling (mounted at `/silk/`)
 - `whitenoise` - Static file serving
 - `psycopg2-binary` - PostgreSQL adapter
+- `dj-database-url` - Parse `DATABASE_URL` for production
+- `python-dotenv` - Load `.env` in development
 - `pillow` - Image processing
 
 ### Deployment
@@ -149,10 +159,12 @@ The codebase uses **Django REST Framework Generic Views** (not ViewSets):
 - All routes proxy to Django WSGI app
 
 ### Settings Notes
-- `DEBUG` controlled by environment variable (defaults to False)
+- `DEBUG` controlled by environment variable (defaults to `True` if unset — should be set explicitly in production)
+- `SECRET_KEY` read from `DJANGO_SECRET_KEY` env var (loaded from `.env` via `python-dotenv`)
 - `ALLOWED_HOSTS = ['*']` (should be restricted in production)
-- Static files served via WhiteNoise with compression
-- SECRET_KEY is hardcoded (should use environment variable in production)
+- Static files served via WhiteNoise with compression (`CompressedManifestStaticFilesStorage`)
+- CORS allow-list comes from `CORS_ALLOWED_ORIGINS` env var plus regex allow-list for `*.vercel.app` and `*.rajkumaryd.in`
+- Remote migrations: `POST /migrate/` with header `X-Migration-Token: <MIGRATION_SECRET_TOKEN>` (`blogs/views.py:run_migrations`)
 
 ## Development Patterns
 
